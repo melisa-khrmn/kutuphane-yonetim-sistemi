@@ -1,0 +1,94 @@
+classDiagram
+    direction TB
+    class Kullanici {
+        -int id
+        -String ad
+        -String soyad
+        -String email
+        -String sifre_hash
+        -String rol
+        -bool aktif_mi
+        -DateTime kayit_tarihi
+        +yonetici_mi() bool
+    }
+    class Uye {
+        -String ogrenci_no
+        -String bolum
+        -String telefon
+        -int ceza_puani
+        +aktif_oduncler() List~Odunc~
+        +aktif_odunc_sayisi() int
+        +gecikmis_odunc_var_mi() bool
+        +odunc_alabilir_mi() bool
+        +bekleyen_rezervasyonlar() List~Rezervasyon~
+        +toplam_ceza() float
+    }
+    class Yonetici {
+        -String sicil_no
+    }
+    class Kitap {
+        -int id
+        -String baslik
+        -String isbn
+        -int yayin_yili
+        -String yayinevi
+        -int sayfa_sayisi
+        -String dil
+        -String raf_kodu
+        -int toplam_adet
+        -int mevcut_adet
+        -String kapak_url
+        -String ozet
+        +musait_mi() bool
+        +stok_azalt()
+        +stok_artir()
+        +aktif_odunc_var_mi() bool
+        +siradaki_rezervasyon() Rezervasyon
+    }
+    class Yazar {
+        -int id
+        -String ad
+        -String soyad
+        -String biyografi
+        -int dogum_yili
+        +kitabi_var_mi() bool
+    }
+    class Kategori {
+        -int id
+        -String ad
+        +kitap_sayisi() int
+    }
+    class Odunc {
+        -int id
+        -Date alis_tarihi
+        -Date son_iade_tarihi
+        -Date iade_tarihi
+        -String durum
+        -int gecikme_gunu
+        -float ceza_tutari
+        -int uzatma_sayisi
+        +iade_edildi_mi() bool
+        +gecikme_gunu_hesapla() int
+        +ceza_hesapla() float
+        +gecikmis_mi() bool
+        +kalan_gun() int
+        +durumu_guncelle()
+        +uzat()
+        +iade_et()
+    }
+    class Rezervasyon {
+        -int id
+        -DateTime tarih
+        -String durum
+        +bekliyor_mu() bool
+        +karsila()
+        +iptal_et()
+    }
+    Kullanici <|-- Uye
+    Kullanici <|-- Yonetici
+    Uye "1" --> "0..*" Odunc : yapar
+    Kitap "1" --> "0..*" Odunc : konusudur
+    Uye "1" --> "0..*" Rezervasyon : yapar
+    Kitap "1" --> "0..*" Rezervasyon : icin
+    Kategori "0..1" o-- "0..*" Kitap : icerir
+    Yazar "0..*" -- "0..*" Kitap : yazar

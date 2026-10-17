@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kitap Detayı · Üniversite Kütüphanesi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/stil.css" />
+</head>
+<body class="bg-slate-50 min-h-screen">
+  <main class="max-w-4xl mx-auto px-4 py-6">
+    <a href="/static/kitaplar.html" class="text-sm text-indigo-600 hover:underline">← Kataloğa dön</a>
+    <div id="icerik" class="mt-4 kart p-6 text-slate-500">Yükleniyor…</div>
+  </main>
+
+<script src="/static/ortak.js"></script>
+<script>
+  navbarCiz("katalog");
+  const id = new URLSearchParams(location.search).get("id");
+
+  // Kapak: ISBN ile Open Library'den dener, bulunamazsa renkli kutu kalır
+  function kapakKutu(k, ek = "") {
+    const resim = !k.kapak_url && k.isbn
+      ? `<img src="https://covers.openlibrary.org/b/isbn/${encodeURIComponent(k.isbn)}-L.jpg?default=false" alt="" loading="lazy" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit" />`
+      : "";
+    return `<div style="position:relative">${kapakHtml(k, ek)}${resim}</div>`;
+  }
+  const yazarMetin = (k) => Array.isArray(k.yazarlar)
+    ? k.yazarlar.map((y) => typeof y === "string" ? y : `${y.ad} ${y.soyad || ""}`.trim()).join(", ")
+    : (k.yazar_adlari || k.yazar || "—");
+  const kategoriMetin = (k) => k.kategori_ad || k.kategori?.ad || (typeof k.kategori === "string" ? k.kategori : "—");
+
+  async function yukle() {
+    const k = await dene(() => api("/kitaplar/" + id));
+    const kutu = document.getElementById("icerik");
+    if (!k) { kutu.textContent = "Kitap bulunamadı. Kataloğa dönüp tekrar seç."; return; }
+    const satir = (ad, deger) => `<div class="flex justify-between border-b py-2 text-sm"><span class="text-slate-500">${ad}</span><span class="font-medium text-right">${esc(deger ?? "—")}</span></div>`;
+    kutu.className = "mt-4 kart p-6 grid gap-6 md:grid-cols-[220px_1fr]";
+    kutu.innerHTML = `
+      <div>${kapakKutu(k, "w-full")}</div>
+      <div>
+        <h1 class="text-2xl font-bold">${esc(k.baslik)}</h1>
+        <p class="text-slate-600 mt-1">${esc(yazarMetin(k))}</p>
+        <div class="my-3">${musaitlikRozeti(k)}</div>
+        <p class="text-slate-700 mb-4">${esc(k.ozet || "Bu kitap için özet eklenmemiş.")}</p>
+        <div class="mb-5">
+          ${satir("ISBN", k.isbn)}${satir("Kategori", kategoriMetin(k))}${satir("Yayınevi", k.yayinevi)}
+          ${satir("Yayın yılı", k.yayin_yili)}${satir("Sayfa sayısı", k.sayfa_sayisi)}${satir("Dil", k.dil)}${satir("Raf kodu", k.raf_kodu)}
+        </div>
+        <div class="flex gap-2">
+          ${k.mevcut_adet > 0
+            ? `<button class="btn btn-ana" onclick="oduncAl(${k.id}, yukle)">Ödünç al</button>`
+            : `<button class="btn btn-ikincil" onclick="rezerveEt(${k.id}, yukle)">Rezerve et</button>`}
+        </div>
+      </div>`;
+  }
+  yukle();
+</script>
+</body>
+</html>

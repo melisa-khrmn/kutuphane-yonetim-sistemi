@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yönetim · Üniversite Kütüphanesi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/stil.css" />
+</head>
+<body class="bg-slate-50 min-h-screen">
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <div id="sekmeler" class="flex flex-wrap gap-2 mb-5"></div>
+    <div id="alan"></div>
+  </main>
+
+<script src="/static/ortak.js"></script>
+<script>
+  if (!korumaGerekli("YONETICI")) throw new Error("yetkisiz");
+  navbarCiz("yonetici");
+
+  const dizi = (v) => Array.isArray(v) ? v : (v && typeof v === "object" ? (Object.values(v).find(Array.isArray) || []) : []);
+
+  // Tüm sayfaları çeker (API sayfalı döndürüyorsa)
+  async function tumSayfalar(yol) {
+    const gorulen = new Map();
+    for (let s = 1; s <= 20; s++) {
+      const v = dizi(await api(`${yol}${yol.includes("?") ? "&" : "?"}sayfa=${s}`));
+      let yeni = 0;
+      v.forEach((k) => { if (!gorulen.has(k.id)) { gorulen.set(k.id, k); yeni++; } });
+      if (!yeni) break;
+    }
+    return [...gorulen.values()];
+  }
+
+  const yazarMetin = (k) => Array.isArray(k.yazarlar) ? k.yazarlar.map((y) => typeof y === "string" ? y : `${y.ad} ${y.soyad || ""}`.trim()).join(", ") : (k.yazar_adlari || "");
+  const th = (a) => `<thead><tr class="text-left text-slate-500 border-b">${a.map((x) => `<th class="py-2 pr-4 font-medium">${x}</th>`).join("")}</tr></thead>`;
+  const bosMesaj = (n) => `<tr><td colspan="${n}" class="py-8 text-center text-slate-500">Kayıt yok.</td></tr>`;
+  const alanHtml = (ad, etiket, tip = "text", deger = "", zorunlu = false) => tip === "textarea"
+    ? `<label class="block text-sm font-medium">${etiket}<textarea name="${ad}" rows="3" class="mt-1 w-full border rounded-lg px-3 py-2 font-normal">${esc(deger)}</textarea></label>`
+    : `<label class="block text-sm font-medium">${etiket}<input name="${ad}" type="${tip}" value="${esc(deger)}" ${zorunlu ? "required" : ""} class="mt-1 w-full border rounded-lg px-3 py-2 font-normal" /></label>`;
+  const secimHtml = (ad, etiket, secenekler, secili = "", coklu = false) =>
+    `<label class="block text-sm font-medium">${etiket}<select name="${ad}" ${coklu ? "multiple size=5" : ""} class="mt-1 w-full border rounded-lg px-3 py-2 font-normal">
+      ${coklu ? "" : '<option value="">Seçiniz</option>'}${secenekler.map(([v, t]) => `<option value="${v}" ${String(v) === String(secili) ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>`;
+
+  // Form verisini API gövdesine çevirir: boş alanlar atılır, sayısal alanlar sayıya çevrilir
+  function govdeYap(fd, sayisal = []) {
+    const g = {};
+    for (const [k, v] of fd.entries()) {
+      if (v === "") continue;
+      if (k in g) { g[k] = [].concat(g[k], sayisal.includes(k) ? Number(v) : v); continue; }
+      g[k] = sayisal.includes(k) ? Number(v) : v;
+    }
+    return g;
+  }
+
+  /* ---------- Sekmeler ---------- */
+  const SEKMELER = {
+    ozet: ["Özet", ozetSayfa], kitap: ["Kitaplar", kitapSayfa], yazar: ["Yazarlar", yazarSayfa],
+    kategori: ["Kategoriler", kategoriSayfa], uye: ["Üyeler", uyeSayfa], odunc: ["Ödünç / İade", oduncSayfa], rapor: ["Raporlar", raporSayfa],
+  };
+  function sekmeAc(anahtar) {
+    document.getElementById("sekmeler").innerHTML = Object.entries(SEKMELER).map(([k, [ad]]) =>
+      `<button onclick="sekmeAc('${k}')" class="btn btn-kucuk ${k === anahtar ? "btn-ana" : "btn-ikincil"}">${ad}</button>`).join("");
+    location.hash = anahtar;
+    SEKMELER[anahtar][1]();
+  }
+
+  /* ---------- Özet ---------- */
+  async function ozetSayfa() {
+    const o = await dene(() => api("/raporlar/ozet")) || {};
+    const ad = { toplam_kitap: "Toplam kitap", toplam_uye: "Toplam üye", aktif_odunc: "Aktif ödünç", geciken: "Geciken", geciken_sayisi: "Geciken" };
+    document.getElementById("alan").innerHTML = `<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">` +
+      Object.entries(o).map(([k, v]) => `<div class="kart p-5"><div class="text-sm text-slate-500">${esc(ad[k] || k.replaceAll("_", " "))}</div><div class="text-3xl font-bold">${esc(v)}</div></div>`).join("") + `</div>`;
+  }
+
+  /* ---------- Kitaplar ---------- */
+  async function kitapSayfa() {
+    const kitaplar = (await dene(() => tumSayfalar("/kitaplar"))) || [];
+    document.getElementById("alan").innerHTML = `
+      <div class="flex justify-between mb-3"><h2 class="font-bold text-lg">Kitaplar (${kitaplar.length})</h2><button class="btn btn-ana btn-kucuk" onclick="kitapForm()">+ Kitap ekle</button></div>
+      <div class="kart p-4 overflow-x-auto"><table class="w-full text-sm">${th(["Başlık", "Yazar", "ISBN", "Stok", "Raf", ""])}<tbody>
+      ${kitaplar.map((k) => `<tr class="border-b"><td class="py-2 pr-4 font-medium">${esc(k.baslik)}</td><td class="pr-4">${esc(yazarMetin(k))}</td><td class="pr-4">${esc(k.isbn)}</td>
+        <td class="pr-4">${k.mevcut_adet}/${k.toplam_adet}</td><td class="pr-4">${esc(k.raf_kodu)}</td>
+        <td class="text-right whitespace-nowrap"><button class="btn btn-ikincil btn-kucuk" onclick="kitapForm(${k.id})">Düzenle</button>
+        <button class="btn btn-kucuk bg-red-50 text-red-600" onclick="sil('/kitaplar/${k.id}','Kitap silinsin mi?',kitapSayfa)">Sil</button></td></tr>`).join("") || bosMesaj(6)}
+      </tbody></table></div>`;
+  }
+  async function kitapForm(id) {
+    const [k, yazarlar, kategoriler] = await Promise.all([
+      id ? api("/kitaplar/" + id) : Promise.resolve({}),
+      api("/yazarlar").then(dizi), api("/kategoriler").then(dizi),
+    ]);
+    const secili = (k.yazarlar || []).map((y) => y.id);
+    const html = alanHtml("baslik", "Başlık", "text", k.baslik, true) + alanHtml("isbn", "ISBN", "text", k.isbn, true) +
+      `<div class="grid grid-cols-2 gap-4">${alanHtml("yayin_yili", "Yayın yılı", "number", k.yayin_yili)}${alanHtml("sayfa_sayisi", "Sayfa sayısı", "number", k.sayfa_sayisi)}
+      ${alanHtml("yayinevi", "Yayınevi", "text", k.yayinevi)}${alanHtml("dil", "Dil", "text", k.dil)}
+      ${alanHtml("raf_kodu", "Raf kodu", "text", k.raf_kodu)}${alanHtml("toplam_adet", "Toplam adet", "number", k.toplam_adet ?? 1, true)}</div>` +
+      secimHtml("kategori_id", "Kategori", kategoriler.map((c) => [c.id, c.ad]), k.kategori_id ?? k.kategori?.id) +
+      `<label class="block text-sm font-medium">Yazarlar (Ctrl ile birden fazla seç)<select name="yazar_idleri" multiple size="5" class="mt-1 w-full border rounded-lg px-3 py-2 font-normal">
+        ${yazarlar.map((y) => `<option value="${y.id}" ${secili.includes(y.id) ? "selected" : ""}>${esc(y.ad + " " + (y.soyad || ""))}</option>`).join("")}</select></label>` +
+      alanHtml("kapak_url", "Kapak URL", "url", k.kapak_url) + alanHtml("ozet", "Özet", "textarea", k.ozet);
+    modalAc(id ? "Kitabı düzenle" : "Kitap ekle", html, async (fd) => {
+      const g = govdeYap(fd, ["yayin_yili", "sayfa_sayisi", "toplam_adet", "kategori_id", "yazar_idleri"]);
+      if (g.yazar_idleri !== undefined) g.yazar_idleri = [].concat(g.yazar_idleri);
+      const r = await dene(() => api(id ? "/kitaplar/" + id : "/kitaplar", { method: id ? "PUT" : "POST", govde: g }), id ? "Kitap güncellendi." : "Kitap eklendi.");
+      if (r) kitapSayfa(); else return false;
+    });
+  }
+
+  /* ---------- Yazarlar ---------- */
+  async function yazarSayfa() {
+    const liste = dizi(await dene(() => api("/yazarlar")));
+    document.getElementById("alan").innerHTML = `
+      <div class="flex justify-between mb-3"><h2 class="font-bold text-lg">Yazarlar (${liste.length})</h2><button class="btn btn-ana btn-kucuk" onclick="yazarForm()">+ Yazar ekle</button></div>
+      <div class="kart p-4 overflow-x-auto"><table class="w-full text-sm">${th(["Ad", "Soyad", "Doğum yılı", ""])}<tbody>
+      ${liste.map((y) => `<tr class="border-b"><td class="py-2 pr-4 font-medium">${esc(y.ad)}</td><td class="pr-4">${esc(y.soyad)}</td><td class="pr-4">${esc(y.dogum_yili ?? "—")}</td>
+        <td class="text-right whitespace-nowrap"><button class="btn btn-ikincil btn-kucuk" onclick='yazarForm(${JSON.stringify(y).replace(/'/g, "&#39;")})'>Düzenle</button>
+        <button class="btn btn-kucuk bg-red-50 text-red-600" onclick="sil('/yazarlar/${y.id}','Yazar silinsin mi?',yazarSayfa)">Sil</button></td></tr>`).join("") || bosMesaj(4)}
+      </tbody></table></div>`;
+  }
+  function yazarForm(y = {}) {
+    modalAc(y.id ? "Yazarı düzenle" : "Yazar ekle",
+      alanHtml("ad", "Ad", "text", y.ad, true) + alanHtml("soyad", "Soyad", "text", y.soyad, true) +
+      alanHtml("dogum_yili", "Doğum yılı", "number", y.dogum_yili) + alanHtml("biyografi", "Biyografi", "textarea", y.biyografi),
+      async (fd) => {
+        const r = await dene(() => api(y.id ? "/yazarlar/" + y.id : "/yazarlar", { method: y.id ? "PUT" : "POST", govde: govdeYap(fd, ["dogum_yili"]) }), y.id ? "Yazar güncellendi." : "Yazar eklendi.");
+        if (r) yazarSayfa(); else return false;
+      });
+  }
+
+  /* ---------- Kategoriler ---------- */
+  async function kategoriSayfa() {
+    const liste = dizi(await dene(() => api("/kategoriler")));
+    document.getElementById("alan").innerHTML = `
+      <div class="flex justify-between mb-3"><h2 class="font-bold text-lg">Kategoriler (${liste.length})</h2><button class="btn btn-ana btn-kucuk" onclick="kategoriForm()">+ Kategori ekle</button></div>
+      <div class="kart p-4 overflow-x-auto"><table class="w-full text-sm">${th(["Ad", ""])}<tbody>
+      ${liste.map((c) => `<tr class="border-b"><td class="py-2 pr-4 font-medium">${esc(c.ad)}</td>
+        <td class="text-right whitespace-nowrap"><button class="btn btn-ikincil btn-kucuk" onclick='kategoriForm(${JSON.stringify(c).replace(/'/g, "&#39;")})'>Düzenle</button>
+        <button class="btn btn-kucuk bg-red-50 text-red-600" onclick="sil('/kategoriler/${c.id}','Kategori silinsin mi?',kategoriSayfa)">Sil</button></td></tr>`).join("") || bosMesaj(2)}
+      </tbody></table></div>`;
+  }
+  function kategoriForm(c = {}) {
+    modalAc(c.id ? "Kategoriyi düzenle" : "Kategori ekle", alanHtml("ad", "Kategori adı", "text", c.ad, true), async (fd) => {
+      const r = await dene(() => api(c.id ? "/kategoriler/" + c.id : "/kategoriler", { method: c.id ? "PUT" : "POST", govde: govdeYap(fd) }), "Kaydedildi.");
+      if (r) kategoriSayfa(); else return false;
+    });
+  }
+
+  /* ---------- Üyeler ---------- */
+  async function uyeSayfa() {
+    const liste = dizi(await dene(() => api("/uyeler")));
+    document.getElementById("alan").innerHTML = `
+      <h2 class="font-bold text-lg mb-3">Üyeler (${liste.length})</h2>
+      <div class="kart p-4 overflow-x-auto"><table class="w-full text-sm">${th(["Ad soyad", "E-posta", "Öğrenci no", "Bölüm", "Ceza puanı", "Durum", ""])}<tbody>
+      ${liste.map((u) => `<tr class="border-b"><td class="py-2 pr-4 font-medium">${esc(u.ad)} ${esc(u.soyad)}</td><td class="pr-4">${esc(u.email)}</td>
+        <td class="pr-4">${esc(u.ogrenci_no)}</td><td class="pr-4">${esc(u.bolum)}</td><td class="pr-4">${esc(u.ceza_puani ?? 0)}</td>
+        <td class="pr-4">${u.aktif_mi ? '<span class="rozet rozet-yesil">Aktif</span>' : '<span class="rozet rozet-gri">Pasif</span>'}</td>
+        <td class="text-right whitespace-nowrap"><button class="btn btn-ikincil btn-kucuk" onclick="uyeDurum(${u.id}, ${!u.aktif_mi})">${u.aktif_mi ? "Pasif yap" : "Aktif yap"}</button>
+        <button class="btn btn-kucuk bg-red-50 text-red-600" onclick="sil('/uyeler/${u.id}','Üye silinsin mi?',uyeSayfa)">Sil</button></td></tr>`).join("") || bosMesaj(7)}
+      </tbody></table></div>`;
+  }
+  async function uyeDurum(id, aktif) {
+    if (await dene(() => api("/uyeler/" + id + "/aktiflik", { method: "PUT", govde: { aktif_mi: aktif } }), "Üye durumu güncellendi.")) uyeSayfa();
+  }
+
+  /* ---------- Ödünç / İade ---------- */
+  async function oduncSayfa() {
+    const [oduncler, uyeler, kitaplar] = await Promise.all([api("/oduncler").then(dizi), api("/uyeler").then(dizi), tumSayfalar("/kitaplar")]);
+    document.getElementById("alan").innerHTML = `
+      <div class="kart p-5 mb-5"><h2 class="font-bold text-lg mb-3">Ödünç ver</h2>
+        <form id="oduncForm" class="grid gap-3 md:grid-cols-[1fr_1fr_auto] items-end">
+          ${secimHtml("uye_id", "Üye", uyeler.map((u) => [u.id, `${u.ad} ${u.soyad} (${u.ogrenci_no || u.email})`]))}
+          ${secimHtml("kitap_id", "Kitap", kitaplar.filter((k) => k.mevcut_adet > 0).map((k) => [k.id, `${k.baslik} (${k.mevcut_adet})`]))}
+          <button class="btn btn-ana" type="submit">Ödünç ver</button></form></div>
+      <div class="kart p-4 overflow-x-auto"><h2 class="font-bold text-lg mb-3">Ödünç kayıtları</h2><table class="w-full text-sm">${th(["Üye", "Kitap", "Alış", "Son iade", "Durum", "Ceza", ""])}<tbody>
+      ${oduncler.map((o) => {
+        const acik = o.durum === "AKTIF" || o.durum === "GECIKMIS";
+        return `<tr class="border-b"><td class="py-2 pr-4">${esc(o.uye_ad || o.uye_adi || "Üye #" + o.uye_id)}</td><td class="pr-4 font-medium">${esc(o.kitap_baslik || "Kitap #" + o.kitap_id)}</td>
+        <td class="pr-4">${tarih(o.alis_tarihi)}</td><td class="pr-4">${tarih(o.son_iade_tarihi)}</td><td class="pr-4">${DURUM_ROZET[o.durum] || esc(o.durum)}</td>
+        <td class="pr-4">${o.ceza_tutari ? TL(o.ceza_tutari) : "—"}</td>
+        <td class="text-right">${acik ? `<button class="btn btn-ana btn-kucuk" onclick="iadeAl(${o.id})">İade al</button>` : ""}</td></tr>`;
+      }).join("") || bosMesaj(7)}</tbody></table></div>`;
+    document.getElementById("oduncForm").onsubmit = async (e) => {
+      e.preventDefault();
+      const g = govdeYap(new FormData(e.target), ["uye_id", "kitap_id"]);
+      if (await dene(() => api("/oduncler", { method: "POST", govde: g }), "Kitap ödünç verildi.")) oduncSayfa();
+    };
+  }
+  async function iadeAl(id) {
+    const r = await dene(() => api(`/oduncler/${id}/iade`, { method: "PUT" }), (x) => x?.ceza_tutari ? `İade alındı. Gecikme cezası: ${TL(x.ceza_tutari)}` : "İade alındı.");
+    if (r) oduncSayfa();
+  }
+
+  /* ---------- Raporlar ---------- */
+  async function raporSayfa() {
+    const bolum = async (baslik, yol) => {
+      const v = dizi(await dene(() => api(yol)));
+      const kolonlar = v.length ? Object.keys(v[0]).filter((k) => typeof v[0][k] !== "object") : [];
+      return `<div class="kart p-4 overflow-x-auto mb-5"><h2 class="font-bold text-lg mb-3">${baslik} (${v.length})</h2>
+        <table class="w-full text-sm">${th(kolonlar.map((k) => k.replaceAll("_", " ")))}<tbody>
+        ${v.map((s) => `<tr class="border-b">${kolonlar.map((k) => `<td class="py-2 pr-4">${esc(/tarih/.test(k) ? tarih(s[k]) : s[k])}</td>`).join("")}</tr>`).join("") || bosMesaj(1)}</tbody></table></div>`;
+    };
+    document.getElementById("alan").innerHTML =
+      (await bolum("Geciken ödünçler", "/raporlar/gecikmeler")) + (await bolum("Az kalan stok", "/raporlar/stok")) + (await bolum("En çok okunanlar", "/raporlar/en-cok-okunanlar"));
+  }
+
+  async function sil(yol, soru, sonra) {
+    if (!onayla(soru)) return;
+    if (await dene(() => api(yol, { method: "DELETE" }), "Silindi.")) sonra();
+  }
+
+  sekmeAc(SEKMELER[location.hash.slice(1)] ? location.hash.slice(1) : "ozet");
+</script>
+</body>
+</html>

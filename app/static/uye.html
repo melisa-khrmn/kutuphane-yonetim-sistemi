@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panelim · Üniversite Kütüphanesi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/stil.css" />
+</head>
+<body class="bg-slate-50 min-h-screen">
+  <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+    <div id="ozet" class="grid gap-4 sm:grid-cols-3"></div>
+
+    <section class="kart p-5">
+      <h2 class="font-bold text-lg mb-3">Ödünçlerim</h2>
+      <div class="overflow-x-auto"><table class="w-full text-sm" id="oduncTablo"></table></div>
+    </section>
+
+    <section class="kart p-5">
+      <h2 class="font-bold text-lg mb-3">Rezervasyonlarım</h2>
+      <div class="overflow-x-auto"><table class="w-full text-sm" id="rezTablo"></table></div>
+    </section>
+  </main>
+
+<script src="/static/ortak.js"></script>
+<script>
+  const dizi = (v) => Array.isArray(v) ? v : (v && typeof v === "object" ? (Object.values(v).find(Array.isArray) || []) : []);
+  const kalanGun = (t) => Math.ceil((new Date(t) - new Date()) / 86400000);
+  const bos = (kolonlar, mesaj) => `<tbody><tr><td colspan="${kolonlar}" class="py-8 text-center text-slate-500">${mesaj}</td></tr></tbody>`;
+  const th = (...a) => `<thead><tr class="text-left text-slate-500 border-b">${a.map((x) => `<th class="py-2 pr-4 font-medium">${x}</th>`).join("")}</tr></thead>`;
+
+  async function yukle() {
+    const [oduncler, rezler] = await Promise.all([
+      dene(() => api("/oduncler/benim")).then(dizi),
+      dene(() => api("/rezervasyonlar/benim")).then(dizi),
+    ]);
+
+    const aktif = oduncler.filter((o) => o.durum === "AKTIF" || o.durum === "GECIKMIS");
+    const gecikmis = oduncler.filter((o) => o.durum === "GECIKMIS");
+    const ceza = oduncler.reduce((t, o) => t + (o.ceza_tutari || 0), 0);
+    const kart = (ad, deger, renk = "text-slate-900") =>
+      `<div class="kart p-5"><div class="text-sm text-slate-500">${ad}</div><div class="text-2xl font-bold ${renk}">${deger}</div></div>`;
+    document.getElementById("ozet").innerHTML =
+      kart("Aktif ödünç", aktif.length + " / 5") +
+      kart("Geciken kitap", gecikmis.length, gecikmis.length ? "text-red-600" : "text-slate-900") +
+      kart("Toplam ceza", TL(ceza), ceza ? "text-red-600" : "text-slate-900");
+
+    const ot = document.getElementById("oduncTablo");
+    ot.innerHTML = th("Kitap", "Alış", "Son iade", "Kalan", "Durum", "Ceza", "") +
+      (oduncler.length ? "<tbody>" + oduncler.map((o) => {
+        const acik = o.durum === "AKTIF" || o.durum === "GECIKMIS";
+        const kg = acik ? kalanGun(o.son_iade_tarihi) : null;
+        const kalan = acik ? (kg < 0 ? `<span class="text-red-600">${-kg} gün gecikti</span>` : kg + " gün") : "—";
+        return `<tr class="border-b">
+          <td class="py-2 pr-4 font-medium">${esc(o.kitap_baslik || "Kitap #" + o.kitap_id)}</td>
+          <td class="pr-4">${tarih(o.alis_tarihi)}</td><td class="pr-4">${tarih(o.son_iade_tarihi)}</td>
+          <td class="pr-4">${kalan}</td><td class="pr-4">${DURUM_ROZET[o.durum] || esc(o.durum)}</td>
+          <td class="pr-4">${o.ceza_tutari ? TL(o.ceza_tutari) : "—"}</td>
+          <td class="text-right whitespace-nowrap">${acik ? `
+            <button class="btn btn-ikincil btn-kucuk" onclick="uzat(${o.id})">Uzat</button>
+            <button class="btn btn-ana btn-kucuk" onclick="iade(${o.id})">İade et</button>` : ""}</td></tr>`;
+      }).join("") + "</tbody>" : bos(7, "Henüz ödünç aldığın kitap yok. Katalogdan bir kitap seç."));
+
+    const rt = document.getElementById("rezTablo");
+    rt.innerHTML = th("Kitap", "Tarih", "Sıra", "Durum", "") +
+      (rezler.length ? "<tbody>" + rezler.map((r) => `<tr class="border-b">
+        <td class="py-2 pr-4 font-medium">${esc(r.kitap_baslik || "Kitap #" + r.kitap_id)}</td>
+        <td class="pr-4">${tarih(r.tarih)}</td><td class="pr-4">${r.sira ?? "—"}</td>
+        <td class="pr-4">${DURUM_ROZET[r.durum] || esc(r.durum)}</td>
+        <td class="text-right">${r.durum === "BEKLIYOR" ? `<button class="btn btn-ikincil btn-kucuk" onclick="iptal(${r.id})">İptal et</button>` : ""}</td></tr>`).join("") + "</tbody>"
+        : bos(5, "Rezervasyonun yok. Tükenen kitaplarda “Rezerve et” butonunu kullanabilirsin."));
+  }
+
+  async function uzat(id) { if (await dene(() => api(`/oduncler/${id}/uzat`, { method: "PUT" }), "Ödünç süresi 7 gün uzatıldı.")) yukle(); }
+  async function iade(id) {
+    if (!onayla("Bu kitabı iade etmek istiyor musun?")) return;
+    if (await dene(() => api(`/oduncler/${id}/iade`, { method: "PUT" }), "Kitap iade edildi.")) yukle();
+  }
+  async function iptal(id) {
+    if (!onayla("Rezervasyonu iptal etmek istiyor musun?")) return;
+    if (await dene(() => api(`/rezervasyonlar/${id}`, { method: "DELETE" }), "Rezervasyon iptal edildi.")) yukle();
+  }
+
+  // Sayfa başlatma: tüm yardımcılar tanımlandıktan sonra çalışır
+  if (korumaGerekli("UYE")) {
+    navbarCiz("uye");
+    yukle();
+  }
+</script>
+</body>
+</html>

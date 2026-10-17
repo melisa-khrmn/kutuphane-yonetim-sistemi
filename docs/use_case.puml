@@ -1,0 +1,44 @@
+@startuml
+title Use Case Diagram
+left to right direction
+actor "Uye" as U
+actor "Yonetici" as Y
+Y --|> U : (ek yetkiler)
+
+rectangle "Online Kutuphane Yonetim Sistemi" {
+  usecase "Kayit ol / Giris yap" as UC1
+  usecase "Kitap ara ve filtrele" as UC2
+  usecase "Kitap detayini gor" as UC3
+  usecase "Odunc al" as UC4
+  usecase "Iade et" as UC5
+  usecase "Odunc suresini uzat" as UC6
+  usecase "Kitap rezerve et / iptal et" as UC7
+  usecase "Odunclerimi ve cezalarimi gor" as UC8
+  usecase "Kitap ekle / guncelle / sil" as UC9
+  usecase "Yazar ekle / guncelle / sil" as UC10
+  usecase "Kategori yonet" as UC11
+  usecase "Uyeleri yonet" as UC12
+  usecase "Odunc ver / iade al" as UC13
+  usecase "Gecikme raporu" as UC14
+  usecase "Stok raporu" as UC15
+  usecase "En cok okunanlar raporu" as UC16
+}
+U --> UC1
+U --> UC2
+U --> UC3
+U --> UC4
+U --> UC5
+U --> UC6
+U --> UC7
+U --> UC8
+Y --> UC9
+Y --> UC10
+Y --> UC11
+Y --> UC12
+Y --> UC13
+Y --> UC14
+Y --> UC15
+Y --> UC16
+UC4 .> UC1 : <<include>>
+UC7 .> UC4 : <<extend>>
+@enduml

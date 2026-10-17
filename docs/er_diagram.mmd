@@ -1,0 +1,80 @@
+erDiagram
+    KULLANICILAR ||--o| UYELER : "alt tablo"
+    KULLANICILAR ||--o| YONETICILER : "alt tablo"
+    KATEGORILER |o--o{ KITAPLAR : icerir
+    KITAPLAR ||--o{ KITAP_YAZAR : sahiptir
+    YAZARLAR ||--o{ KITAP_YAZAR : yazar
+    UYELER ||--o{ ODUNCLER : yapar
+    KITAPLAR ||--o{ ODUNCLER : konusudur
+    UYELER ||--o{ REZERVASYONLAR : yapar
+    KITAPLAR ||--o{ REZERVASYONLAR : icin
+    KULLANICILAR {
+        int id PK
+        string ad
+        string soyad
+        string email UK
+        string sifre_hash
+        string rol
+        bool aktif_mi
+        datetime kayit_tarihi
+    }
+    UYELER {
+        int id PK, FK
+        string ogrenci_no UK
+        string bolum
+        string telefon
+        int ceza_puani
+    }
+    YONETICILER {
+        int id PK, FK
+        string sicil_no
+    }
+    KATEGORILER {
+        int id PK
+        string ad
+    }
+    KITAPLAR {
+        int id PK
+        string baslik
+        string isbn UK
+        int yayin_yili
+        string yayinevi
+        int sayfa_sayisi
+        string dil
+        string raf_kodu
+        int toplam_adet
+        int mevcut_adet
+        string kapak_url
+        text ozet
+        int kategori_id FK
+    }
+    YAZARLAR {
+        int id PK
+        string ad
+        string soyad
+        text biyografi
+        int dogum_yili
+    }
+    KITAP_YAZAR {
+        int kitap_id PK, FK
+        int yazar_id PK, FK
+    }
+    ODUNCLER {
+        int id PK
+        int uye_id FK
+        int kitap_id FK
+        date alis_tarihi
+        date son_iade_tarihi
+        date iade_tarihi
+        string durum
+        int gecikme_gunu
+        float ceza_tutari
+        int uzatma_sayisi
+    }
+    REZERVASYONLAR {
+        int id PK
+        int uye_id FK
+        int kitap_id FK
+        datetime tarih
+        string durum
+    }

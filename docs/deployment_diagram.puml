@@ -1,0 +1,21 @@
+@startuml
+title Deployment Diagram
+skinparam shadowing false
+
+node "Kullanici Bilgisayari" as istemci {
+  artifact "Web Tarayici\n(Chrome / Edge)" as tarayici
+}
+node "Web Sunucusu\n(Nginx)" as web {
+  artifact "index.html\nkitaplar.html\nuye.html\nyonetici.html" as sayfalar
+  artifact "ortak.js\nstil.css" as varliklar
+}
+node "API Sunucusu\n(FastAPI + Uvicorn)" as api {
+  artifact "app.main\n(routers, services,\nrepositories)" as uygulama
+}
+node "Veritabani Sunucusu\n(PostgreSQL)" as vt {
+  database "kutuphane" as db
+}
+tarayici --> sayfalar : HTTPS (443)
+tarayici --> uygulama : REST / JSON\n(JWT)
+uygulama --> db : SQL (TCP 5432)\nSQLAlchemy
+@enduml

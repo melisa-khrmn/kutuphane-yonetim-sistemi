@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Katalog · Üniversite Kütüphanesi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/stil.css" />
+</head>
+<body class="bg-slate-50 min-h-screen">
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <div class="flex flex-wrap gap-3 mb-6">
+      <input id="ara" type="search" placeholder="Başlık, yazar veya ISBN ara…" class="flex-1 min-w-[220px] border rounded-lg px-4 py-2" />
+      <select id="kategori" class="border rounded-lg px-3 py-2"><option value="">Tüm kategoriler</option></select>
+      <label class="flex items-center gap-2 text-sm text-slate-600"><input id="sadeceMusait" type="checkbox" /> Sadece müsait olanlar</label>
+    </div>
+    <p id="sayac" class="text-sm text-slate-500 mb-3"></p>
+    <div id="liste" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"></div>
+  </main>
+
+<script src="/static/ortak.js"></script>
+<script>
+  navbarCiz("katalog");
+  let tumKitaplar = [];
+
+  const dizi = (v) => Array.isArray(v) ? v : (v && typeof v === "object" ? (Object.values(v).find(Array.isArray) || []) : []);
+
+  // Tüm sayfaları çeker (API sayfalı döndürüyorsa)
+  async function tumSayfalar(yol) {
+    const gorulen = new Map();
+    for (let s = 1; s <= 20; s++) {
+      const v = dizi(await api(`${yol}${yol.includes("?") ? "&" : "?"}sayfa=${s}`));
+      let yeni = 0;
+      v.forEach((k) => { if (!gorulen.has(k.id)) { gorulen.set(k.id, k); yeni++; } });
+      if (!yeni) break;
+    }
+    return [...gorulen.values()];
+  }
+
+  // Kapak: ISBN ile Open Library'den dener, bulunamazsa renkli kutu kalır
+  function kapakKutu(k, ek = "") {
+    const resim = !k.kapak_url && k.isbn
+      ? `<img src="https://covers.openlibrary.org/b/isbn/${encodeURIComponent(k.isbn)}-L.jpg?default=false" alt="" loading="lazy" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit" />`
+      : "";
+    return `<div style="position:relative">${kapakHtml(k, ek)}${resim}</div>`;
+  }
+  const yazarMetin = (k) => Array.isArray(k.yazarlar)
+    ? k.yazarlar.map((y) => typeof y === "string" ? y : `${y.ad} ${y.soyad || ""}`.trim()).join(", ")
+    : (k.yazar_adlari || k.yazar || "");
+  const kategoriMetin = (k) => k.kategori_ad || k.kategori?.ad || (typeof k.kategori === "string" ? k.kategori : "");
+
+  async function kategorileriYukle() {
+    const v = await dene(() => api("/kategoriler"));
+    dizi(v).forEach((c) => {
+      const o = document.createElement("option");
+      o.value = c.id; o.textContent = c.ad;
+      document.getElementById("kategori").appendChild(o);
+    });
+  }
+
+  async function yukle() {
+    const q = document.getElementById("ara").value.trim();
+    const kat = document.getElementById("kategori").value;
+    const sorgular = [];
+    const ek = kat ? "&kategori=" + encodeURIComponent(kat) : "";
+    if (q) {
+      for (const alan of ["baslik", "yazar", "isbn"])
+        sorgular.push(tumSayfalar(`/kitaplar?${alan}=${encodeURIComponent(q)}${ek}`).catch(() => []));
+    } else {
+      sorgular.push(tumSayfalar("/kitaplar" + (kat ? "?kategori=" + encodeURIComponent(kat) : "")).catch((e) => { toast(e.message, "hata"); return []; }));
+    }
+    const sonuc = (await Promise.all(sorgular)).flat();
+    const goruldu = new Set();
+    tumKitaplar = sonuc.filter((k) => !goruldu.has(k.id) && goruldu.add(k.id));
+    ciz();
+  }
+
+  function ciz() {
+    const sadece = document.getElementById("sadeceMusait").checked;
+    const liste = tumKitaplar.filter((k) => !sadece || k.mevcut_adet > 0);
+    document.getElementById("sayac").textContent = liste.length + " kitap bulundu";
+    const kutu = document.getElementById("liste");
+    if (!liste.length) {
+      kutu.innerHTML = '<p class="col-span-full text-center text-slate-500 py-16">Aramanla eşleşen kitap yok. Filtreleri temizleyip tekrar dene.</p>';
+      return;
+    }
+    kutu.innerHTML = liste.map((k) => `
+      <div class="kart overflow-hidden flex flex-col">
+        <a href="/static/kitap.html?id=${k.id}">${kapakKutu(k)}</a>
+        <div class="p-4 flex-1 flex flex-col gap-2">
+          <a href="/static/kitap.html?id=${k.id}" class="font-semibold text-slate-900 hover:text-indigo-600">${esc(k.baslik)}</a>
+          <div class="text-sm text-slate-500">${esc(yazarMetin(k))}</div>
+          <div class="text-xs text-slate-400">${esc(kategoriMetin(k))}${k.yayin_yili ? " · " + k.yayin_yili : ""}</div>
+          <div>${musaitlikRozeti(k)}</div>
+          <div class="mt-auto pt-2 flex gap-2">
+            ${k.mevcut_adet > 0
+              ? `<button class="btn btn-ana btn-kucuk flex-1" onclick="oduncAl(${k.id}, yukle)">Ödünç al</button>`
+              : `<button class="btn btn-ikincil btn-kucuk flex-1" onclick="rezerveEt(${k.id}, yukle)">Rezerve et</button>`}
+            <a href="/static/kitap.html?id=${k.id}" class="btn btn-ikincil btn-kucuk">Detay</a>
+          </div>
+        </div>
+      </div>`).join("");
+  }
+
+  let zamanlayici;
+  document.getElementById("ara").addEventListener("input", () => { clearTimeout(zamanlayici); zamanlayici = setTimeout(yukle, 350); });
+  document.getElementById("kategori").addEventListener("change", yukle);
+  document.getElementById("sadeceMusait").addEventListener("change", ciz);
+  kategorileriYukle().then(yukle);
+</script>
+</body>
+</html>

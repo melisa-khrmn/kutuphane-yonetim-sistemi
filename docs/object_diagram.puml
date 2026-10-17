@@ -1,0 +1,48 @@
+@startuml
+title Object Diagram - Bir ogrencinin odunc aldigi kitap
+skinparam objectBackgroundColor #EEF2FF
+skinparam objectBorderColor #4F46E5
+
+object "ahmet : Uye" as u {
+  id = 2
+  ad = "Ahmet"
+  soyad = "Yılmaz"
+  email = "ahmet@ogr.edu.tr"
+  rol = "UYE"
+  aktif_mi = true
+  ogrenci_no = "2023010045"
+  bolum = "Bilgisayar Mühendisliği"
+  ceza_puani = 0
+}
+object "odunc1 : Odunc" as o {
+  id = 101
+  alis_tarihi = 2026-10-10
+  son_iade_tarihi = 2026-10-24
+  iade_tarihi = null
+  durum = "AKTIF"
+  gecikme_gunu = 0
+  ceza_tutari = 0.0
+  uzatma_sayisi = 0
+}
+object "kitap1 : Kitap" as k {
+  id = 7
+  baslik = "Temiz Kod"
+  isbn = "9780132350884"
+  dil = "Türkçe"
+  toplam_adet = 3
+  mevcut_adet = 2
+}
+object "yazar1 : Yazar" as y {
+  id = 4
+  ad = "Robert"
+  soyad = "Martin"
+}
+object "kategori1 : Kategori" as c {
+  id = 2
+  ad = "Bilgisayar Bilimleri"
+}
+u --> o : oduncler
+o --> k : kitap
+k --> y : yazarlar
+k --> c : kategori
+@enduml

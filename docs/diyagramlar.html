@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="UTF-8"><title>Diyagramlar - Online Kütüphane Yönetim Sistemi</title>
+<style>body{font-family:Segoe UI,Arial,sans-serif;max-width:1100px;margin:0 auto;padding:24px;background:#f8fafc;color:#0f172a}
+section{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:28px;page-break-after:always}
+h2{margin:0} .d{color:#64748b;font-size:13px;margin:2px 0 14px} .k{overflow-x:auto;text-align:center} img{max-width:100%}</style></head><body>
+<h1>Online Kütüphane Yönetim Sistemi - UML Diyagramları</h1>
+<p>İnternet bağlantısı gerekir (diyagramlar çizilirken yüklenir). Her bölümün ekran görüntüsünü alabilir veya sayfayı PDF olarak yazdırabilirsin (Ctrl+P).</p>
+<section><h2>1. Class Diagram (sınıflar, ilişkiler, çokluklar)</h2><p class="d">class_diagram.mmd</p><div class="k"><pre class="mermaid">classDiagram
+    direction TB
+    class Kullanici {
+        -int id
+        -String ad
+        -String soyad
+        -String email
+        -String sifre_hash
+        -String rol
+        -bool aktif_mi
+        -DateTime kayit_tarihi
+        +yonetici_mi() bool
+    }
+    class Uye {
+        -String ogrenci_no
+        -String bolum
+        -String telefon
+        -int ceza_puani
+        +aktif_oduncler() List~Odunc~
+        +aktif_odunc_sayisi() int
+        +gecikmis_odunc_var_mi() bool
+        +odunc_alabilir_mi() bool
+        +bekleyen_rezervasyonlar() List~Rezervasyon~
+        +toplam_ceza() float
+    }
+    class Yonetici {
+        -String sicil_no
+    }
+    class Kitap {
+        -int id
+        -String baslik
+        -String isbn
+        -int yayin_yili
+        -String yayinevi
+        -int sayfa_sayisi
+        -String dil
+        -String raf_kodu
+        -int toplam_adet
+        -int mevcut_adet
+        -String kapak_url
+        -String ozet
+        +musait_mi() bool
+        +stok_azalt()
+        +stok_artir()
+        +aktif_odunc_var_mi() bool
+        +siradaki_rezervasyon() Rezervasyon
+    }
+    class Yazar {
+        -int id
+        -String ad
+        -String soyad
+        -String biyografi
+        -int dogum_yili
+        +kitabi_var_mi() bool
+    }
+    class Kategori {
+        -int id
+        -String ad
+        +kitap_sayisi() int
+    }
+    class Odunc {
+        -int id
+        -Date alis_tarihi
+        -Date son_iade_tarihi
+        -Date iade_tarihi
+        -String durum
+        -int gecikme_gunu
+        -float ceza_tutari
+        -int uzatma_sayisi
+        +iade_edildi_mi() bool
+        +gecikme_gunu_hesapla() int
+        +ceza_hesapla() float
+        +gecikmis_mi() bool
+        +kalan_gun() int
+        +durumu_guncelle()
+        +uzat()
+        +iade_et()
+    }
+    class Rezervasyon {
+        -int id
+        -DateTime tarih
+        -String durum
+        +bekliyor_mu() bool
+        +karsila()
+        +iptal_et()
+    }
+    Kullanici &lt;|-- Uye
+    Kullanici &lt;|-- Yonetici
+    Uye &quot;1&quot; --&gt; &quot;0..*&quot; Odunc : yapar
+    Kitap &quot;1&quot; --&gt; &quot;0..*&quot; Odunc : konusudur
+    Uye &quot;1&quot; --&gt; &quot;0..*&quot; Rezervasyon : yapar
+    Kitap &quot;1&quot; --&gt; &quot;0..*&quot; Rezervasyon : icin
+    Kategori &quot;0..1&quot; o-- &quot;0..*&quot; Kitap : icerir
+    Yazar &quot;0..*&quot; -- &quot;0..*&quot; Kitap : yazar
+</pre></div></section><section><h2>2. Object Diagram (ödünç alınan kitap)</h2><p class="d">object_diagram.puml</p><div class="k"><img alt="2. Object Diagram (ödünç alınan kitap)" src="https://www.plantuml.com/plantuml/svg/~h407374617274756d6c0a7469746c65204f626a656374204469616772616d202d20426972206f6772656e63696e696e206f64756e6320616c64696769206b697461700a736b696e706172616d206f626a6563744261636b67726f756e64436f6c6f7220234545463246460a736b696e706172616d206f626a656374426f72646572436f6c6f7220233446343645350a0a6f626a656374202261686d6574203a20557965222061732075207b0a20206964203d20320a20206164203d202241686d6574220a2020736f796164203d202259c4b16c6d617a220a2020656d61696c203d202261686d6574406f67722e6564752e7472220a2020726f6c203d2022555945220a2020616b7469665f6d69203d20747275650a20206f6772656e63695f6e6f203d202232303233303130303435220a2020626f6c756d203d202242696c67697361796172204dc3bc68656e6469736c69c49f69220a202063657a615f7075616e69203d20300a7d0a6f626a65637420226f64756e6331203a204f64756e6322206173206f207b0a20206964203d203130310a2020616c69735f746172696869203d20323032362d31302d31300a2020736f6e5f696164655f746172696869203d20323032362d31302d32340a2020696164655f746172696869203d206e756c6c0a2020647572756d203d2022414b544946220a2020676563696b6d655f67756e75203d20300a202063657a615f747574617269203d20302e300a2020757a61746d615f736179697369203d20300a7d0a6f626a65637420226b6974617031203a204b6974617022206173206b207b0a20206964203d20370a20206261736c696b203d202254656d697a204b6f64220a20206973626e203d202239373830313332333530383834220a202064696c203d202254c3bc726bc3a765220a2020746f706c616d5f61646574203d20330a20206d65766375745f61646574203d20320a7d0a6f626a656374202279617a617231203a2059617a6172222061732079207b0a20206964203d20340a20206164203d2022526f62657274220a2020736f796164203d20224d617274696e220a7d0a6f626a65637420226b617465676f726931203a204b617465676f7269222061732063207b0a20206964203d20320a20206164203d202242696c676973617961722042696c696d6c657269220a7d0a75202d2d3e206f203a206f64756e636c65720a6f202d2d3e206b203a206b697461700a6b202d2d3e2079203a2079617a61726c61720a6b202d2d3e2063203a206b617465676f72690a40656e64756d6c0a" /></div></section><section><h2>3. Package Diagram (mantıksal paketler)</h2><p class="d">package_diagram.puml</p><div class="k"><img alt="3. Package Diagram (mantıksal paketler)" src="https://www.plantuml.com/plantuml/svg/~h407374617274756d6c0a7469746c65205061636b616765204469616772616d202d204d616e74696b73616c2050616b65746c657220286170702f290a736b696e706172616d207061636b6167655374796c652072656374616e676c650a736b696e706172616d20736861646f77696e672066616c73650a0a7061636b6167652022737461746963202855492922206173207569207b0a20205b696e6465782e68746d6c5d0a20205b6b697461706c61722e68746d6c5d0a20205b6b697461702e68746d6c5d0a20205b7579652e68746d6c5d0a20205b796f6e65746963692e68746d6c5d0a7d0a7061636b6167652022726f75746572732028415049292220617320726f7574657273207b0a20205b4b696d6c696b5d0a20205b4b697461706c61725d0a20205b59617a61726c6172202f204b617465676f72696c65725d0a20205b5579656c65725d0a20205b4f64756e636c6572202f2052657a6572766173796f6e6c61725d0a20205b5261706f726c61725d0a7d0a7061636b6167652022736368656d61732028507964616e746963292220617320736368656d6173207b0a20205b497374656b2076652059616e6974206d6f64656c6c6572695d0a7d0a7061636b6167652022736572766963657320284973204d616e746967692922206173207365727669636573207b0a20205b4f64756e632c20696164652c20757a61746d61206b7572616c6c6172695d0a20205b52657a6572766173796f6e207665207261706f72206b7572616c6c6172695d0a7d0a7061636b61676520227265706f7369746f726965732028566572692045726973696d2922206173207265706f73207b0a20205b53514c416c6368656d7920736f7267756c6172695d0a7d0a7061636b61676520226d6f64656c732028446f6d61696e2922206173206d6f64656c73207b0a20205b4b756c6c616e6963695d0a20205b5579655d0a20205b596f6e65746963695d0a20205b4b697461705d0a20205b59617a61725d0a20205b4b617465676f72695d0a20205b4f64756e635d0a20205b52657a6572766173796f6e5d0a7d0a7061636b6167652022636f72652028416c7479617069292220617320636f7265207b0a20205b477576656e6c696b202f204a57545d0a20205b436f6e6669675d0a20205b56657269746162616e695d0a7d0a7569202d2d3e20726f7574657273203a2048545450202f204a534f4e0a726f7574657273202d2d3e20736368656d61730a726f7574657273202d2d3e2073657276696365730a7365727669636573202d2d3e207265706f730a7265706f73202d2d3e206d6f64656c730a726f7574657273202e2e3e20636f72650a7365727669636573202e2e3e20636f72650a7265706f73202e2e3e20636f72650a40656e64756d6c0a" /></div></section><section><h2>4. Deployment Diagram (Web + API + Veritabanı)</h2><p class="d">deployment_diagram.puml</p><div class="k"><img alt="4. Deployment Diagram (Web + API + Veritabanı)" src="https://www.plantuml.com/plantuml/svg/~h407374617274756d6c0a7469746c65204465706c6f796d656e74204469616772616d0a736b696e706172616d20736861646f77696e672066616c73650a0a6e6f646520224b756c6c616e6963692042696c67697361796172692220617320697374656d6369207b0a2020617274696661637420225765622054617261796963695c6e284368726f6d65202f204564676529222061732074617261796963690a7d0a6e6f646520225765622053756e75637573755c6e284e67696e78292220617320776562207b0a202061727469666163742022696e6465782e68746d6c5c6e6b697461706c61722e68746d6c5c6e7579652e68746d6c5c6e796f6e65746963692e68746d6c222061732073617966616c61720a2020617274696661637420226f7274616b2e6a735c6e7374696c2e63737322206173207661726c696b6c61720a7d0a6e6f646520224150492053756e75637573755c6e2846617374415049202b20557669636f726e292220617320617069207b0a2020617274696661637420226170702e6d61696e5c6e28726f75746572732c2073657276696365732c5c6e7265706f7369746f72696573292220617320757967756c616d610a7d0a6e6f6465202256657269746162616e692053756e75637573755c6e28506f737467726553514c2922206173207674207b0a2020646174616261736520226b7574757068616e65222061732064620a7d0a7461726179696369202d2d3e2073617966616c6172203a2048545450532028343433290a7461726179696369202d2d3e20757967756c616d61203a2052455354202f204a534f4e5c6e284a5754290a757967756c616d61202d2d3e206462203a2053514c20285443502035343332295c6e53514c416c6368656d790a40656e64756d6c0a" /></div></section><section><h2>5. ER Diagram (veritabanı şeması)</h2><p class="d">er_diagram.mmd</p><div class="k"><pre class="mermaid">erDiagram
+    KULLANICILAR ||--o| UYELER : &quot;alt tablo&quot;
+    KULLANICILAR ||--o| YONETICILER : &quot;alt tablo&quot;
+    KATEGORILER |o--o{ KITAPLAR : icerir
+    KITAPLAR ||--o{ KITAP_YAZAR : sahiptir
+    YAZARLAR ||--o{ KITAP_YAZAR : yazar
+    UYELER ||--o{ ODUNCLER : yapar
+    KITAPLAR ||--o{ ODUNCLER : konusudur
+    UYELER ||--o{ REZERVASYONLAR : yapar
+    KITAPLAR ||--o{ REZERVASYONLAR : icin
+    KULLANICILAR {
+        int id PK
+        string ad
+        string soyad
+        string email UK
+        string sifre_hash
+        string rol
+        bool aktif_mi
+        datetime kayit_tarihi
+    }
+    UYELER {
+        int id PK, FK
+        string ogrenci_no UK
+        string bolum
+        string telefon
+        int ceza_puani
+    }
+    YONETICILER {
+        int id PK, FK
+        string sicil_no
+    }
+    KATEGORILER {
+        int id PK
+        string ad
+    }
+    KITAPLAR {
+        int id PK
+        string baslik
+        string isbn UK
+        int yayin_yili
+        string yayinevi
+        int sayfa_sayisi
+        string dil
+        string raf_kodu
+        int toplam_adet
+        int mevcut_adet
+        string kapak_url
+        text ozet
+        int kategori_id FK
+    }
+    YAZARLAR {
+        int id PK
+        string ad
+        string soyad
+        text biyografi
+        int dogum_yili
+    }
+    KITAP_YAZAR {
+        int kitap_id PK, FK
+        int yazar_id PK, FK
+    }
+    ODUNCLER {
+        int id PK
+        int uye_id FK
+        int kitap_id FK
+        date alis_tarihi
+        date son_iade_tarihi
+        date iade_tarihi
+        string durum
+        int gecikme_gunu
+        float ceza_tutari
+        int uzatma_sayisi
+    }
+    REZERVASYONLAR {
+        int id PK
+        int uye_id FK
+        int kitap_id FK
+        datetime tarih
+        string durum
+    }
+</pre></div></section><section><h2>6. Use Case Diagram</h2><p class="d">use_case.puml</p><div class="k"><img alt="6. Use Case Diagram" src="https://www.plantuml.com/plantuml/svg/~h407374617274756d6c0a7469746c65205573652043617365204469616772616d0a6c65667420746f20726967687420646972656374696f6e0a6163746f7220225579652220617320550a6163746f722022596f6e65746963692220617320590a59202d2d7c3e2055203a2028656b207965746b696c6572290a0a72656374616e676c6520224f6e6c696e65204b7574757068616e6520596f6e6574696d2053697374656d6922207b0a20207573656361736520224b61796974206f6c202f2047697269732079617022206173205543310a20207573656361736520224b69746170206172612076652066696c7472656c6522206173205543320a20207573656361736520224b69746170206465746179696e6920676f7222206173205543330a20207573656361736520224f64756e6320616c22206173205543340a20207573656361736520224961646520657422206173205543350a20207573656361736520224f64756e63207375726573696e6920757a617422206173205543360a20207573656361736520224b697461702072657a65727665206574202f20697074616c20657422206173205543370a20207573656361736520224f64756e636c6572696d692076652063657a616c6172696d6920676f7222206173205543380a20207573656361736520224b6974617020656b6c65202f2067756e63656c6c65202f2073696c22206173205543390a202075736563617365202259617a617220656b6c65202f2067756e63656c6c65202f2073696c2220617320554331300a20207573656361736520224b617465676f726920796f6e65742220617320554331310a20207573656361736520225579656c65726920796f6e65742220617320554331320a20207573656361736520224f64756e6320766572202f206961646520616c2220617320554331330a2020757365636173652022476563696b6d65207261706f72752220617320554331340a202075736563617365202253746f6b207261706f72752220617320554331350a2020757365636173652022456e20636f6b206f6b756e616e6c6172207261706f72752220617320554331360a7d0a55202d2d3e205543310a55202d2d3e205543320a55202d2d3e205543330a55202d2d3e205543340a55202d2d3e205543350a55202d2d3e205543360a55202d2d3e205543370a55202d2d3e205543380a59202d2d3e205543390a59202d2d3e20554331300a59202d2d3e20554331310a59202d2d3e20554331320a59202d2d3e20554331330a59202d2d3e20554331340a59202d2d3e20554331350a59202d2d3e20554331360a554334202e3e20554331203a203c3c696e636c7564653e3e0a554337202e3e20554334203a203c3c657874656e643e3e0a40656e64756d6c0a" /></div></section><section><h2>7. Sequence Diagram (ödünç alma akışı)</h2><p class="d">sequence_odunc.mmd</p><div class="k"><pre class="mermaid">sequenceDiagram
+    actor Uye
+    participant UI as Arayuz (kitaplar.html)
+    participant R as Oduncler Router
+    participant S as Odunc Servisi
+    participant M as Modeller (Uye, Kitap, Odunc)
+    participant DB as Veritabani
+    Uye-&gt;&gt;UI: &quot;Odunc al&quot; butonuna tiklar
+    UI-&gt;&gt;R: POST /api/oduncler {kitap_id} + JWT
+    R-&gt;&gt;S: odunc ver
+    S-&gt;&gt;DB: kitap ve uyeyi getir
+    DB--&gt;&gt;S: kitap, uye
+    S-&gt;&gt;M: kitap.musait_mi()
+    S-&gt;&gt;M: uye.odunc_alabilir_mi()
+    alt mevcut_adet = 0
+        S--&gt;&gt;R: Hata: stok yok
+        R--&gt;&gt;UI: 4xx Stok tukendi
+        UI--&gt;&gt;Uye: Rezerve et onerisi
+    else uye gecikmis veya 5 aktif odunc var
+        S--&gt;&gt;R: Hata: odunc alinamaz
+        R--&gt;&gt;UI: 4xx Hata mesaji
+        UI--&gt;&gt;Uye: Uyari
+    else uygun
+        S-&gt;&gt;DB: INSERT oduncler (14 gun)
+        S-&gt;&gt;M: kitap.stok_azalt()
+        M-&gt;&gt;DB: UPDATE kitaplar mevcut_adet - 1
+        S--&gt;&gt;R: OduncYanit
+        R--&gt;&gt;UI: 201 Created
+        UI--&gt;&gt;Uye: Basari mesaji + son iade tarihi
+    end
+</pre></div></section>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"default",securityLevel:"loose"});</script>
+</body></html>

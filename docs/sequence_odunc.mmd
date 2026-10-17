@@ -1,0 +1,30 @@
+sequenceDiagram
+    actor Uye
+    participant UI as Arayuz (kitaplar.html)
+    participant R as Oduncler Router
+    participant S as Odunc Servisi
+    participant M as Modeller (Uye, Kitap, Odunc)
+    participant DB as Veritabani
+    Uye->>UI: "Odunc al" butonuna tiklar
+    UI->>R: POST /api/oduncler {kitap_id} + JWT
+    R->>S: odunc ver
+    S->>DB: kitap ve uyeyi getir
+    DB-->>S: kitap, uye
+    S->>M: kitap.musait_mi()
+    S->>M: uye.odunc_alabilir_mi()
+    alt mevcut_adet = 0
+        S-->>R: Hata: stok yok
+        R-->>UI: 4xx Stok tukendi
+        UI-->>Uye: Rezerve et onerisi
+    else uye gecikmis veya 5 aktif odunc var
+        S-->>R: Hata: odunc alinamaz
+        R-->>UI: 4xx Hata mesaji
+        UI-->>Uye: Uyari
+    else uygun
+        S->>DB: INSERT oduncler (14 gun)
+        S->>M: kitap.stok_azalt()
+        M->>DB: UPDATE kitaplar mevcut_adet - 1
+        S-->>R: OduncYanit
+        R-->>UI: 201 Created
+        UI-->>Uye: Basari mesaji + son iade tarihi
+    end

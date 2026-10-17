@@ -1,0 +1,54 @@
+@startuml
+title Package Diagram - Mantiksal Paketler (app/)
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+package "static (UI)" as ui {
+  [index.html]
+  [kitaplar.html]
+  [kitap.html]
+  [uye.html]
+  [yonetici.html]
+}
+package "routers (API)" as routers {
+  [Kimlik]
+  [Kitaplar]
+  [Yazarlar / Kategoriler]
+  [Uyeler]
+  [Oduncler / Rezervasyonlar]
+  [Raporlar]
+}
+package "schemas (Pydantic)" as schemas {
+  [Istek ve Yanit modelleri]
+}
+package "services (Is Mantigi)" as services {
+  [Odunc, iade, uzatma kurallari]
+  [Rezervasyon ve rapor kurallari]
+}
+package "repositories (Veri Erisim)" as repos {
+  [SQLAlchemy sorgulari]
+}
+package "models (Domain)" as models {
+  [Kullanici]
+  [Uye]
+  [Yonetici]
+  [Kitap]
+  [Yazar]
+  [Kategori]
+  [Odunc]
+  [Rezervasyon]
+}
+package "core (Altyapi)" as core {
+  [Guvenlik / JWT]
+  [Config]
+  [Veritabani]
+}
+ui --> routers : HTTP / JSON
+routers --> schemas
+routers --> services
+services --> repos
+repos --> models
+routers ..> core
+services ..> core
+repos ..> core
+@enduml
